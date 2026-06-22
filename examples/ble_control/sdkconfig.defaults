@@ -1,0 +1,6 @@
+# BLE via NimBLE. The stack pushes the app past the default 1 MB partition,
+# so use the large single-app layout on the 4 MB flash these boards carry.
+CONFIG_BT_ENABLED=y
+CONFIG_BT_NIMBLE_ENABLED=y
+CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y
+CONFIG_PARTITION_TABLE_SINGLE_APP_LARGE=y

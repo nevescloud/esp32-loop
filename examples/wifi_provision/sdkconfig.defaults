@@ -1,0 +1,8 @@
+# NimBLE + WiFi STA sharing one 2.4 GHz radio — the provisioning lane needs both
+# up at once, so software coexistence is on. The combined stack pushes the app
+# past the default 1 MB partition; use the large single-app layout on 4 MB flash.
+CONFIG_BT_ENABLED=y
+CONFIG_BT_NIMBLE_ENABLED=y
+CONFIG_ESP_COEX_SW_COEXIST_ENABLE=y
+CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y
+CONFIG_PARTITION_TABLE_SINGLE_APP_LARGE=y

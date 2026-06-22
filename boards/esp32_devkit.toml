@@ -1,0 +1,24 @@
+# ESP32 DevKitC (38-pin, ESP-WROOM-32) on a screw-terminal breakout.
+# Confirmed by esptool: original ESP32, dual-core Xtensa (MAC 70:4b:ca:25:c9:d0).
+[board]
+chip       = "esp32"               # classic Xtensa ESP32 (ESP-WROOM-32), not an S3
+transport  = "uart-bridge"         # USB-C, but through a CP2102 bridge — not native USB
+console    = "uart-bridge"         # logs on UART0 = the CP2102
+download   = "auto"                # CP2102 + auto-reset circuit; esptool resets it itself
+baud       = 115200
+port_glob  = "/dev/cu.usbserial-*"  # the uart-bridge family (shared with the CAM's FTDI)
+bridge     = "CP2102"               # the onboard bridge MODEL — narrows the shared family to this
+                                    # board. A model, not a serial: any CP2102 DevKit matches.
+
+[identity]
+name = "esp32_devkit"
+
+[notes]
+text = """
+Standard 38-pin ESP32 DevKit: ESP-WROOM-32 module + CP2102 USB-UART + USB-C,
+on a screw-terminal expansion board. BOOT + EN buttons present, and the CP2102
+wires DTR/RTS to IO0/EN, so flashing auto-resets — no button dance.
+Console is UART0 = the CP2102. Plenty of free GPIO (unlike the cam boards):
+the breakout exposes D2/D4/D5/D12-D15/D18/D19/D21-D27/D32-D35 etc.
+Strapping pins to avoid for I/O: IO0/IO2/IO5/IO12/IO15.
+"""

@@ -1,0 +1,33 @@
+# ESP32-CAM (OV3660) — classic ESP32-D0WD-V3 on an FTDI with auto-reset.
+# Confirmed by esptool: "ESP32-D0WD-V3 (revision v3.1)", dual-core Xtensa.
+[board]
+chip       = "esp32"               # classic Xtensa ESP32, NOT an S3 (the OV3660 misleads)
+transport  = "uart-bridge"         # no native USB; flash over the FTDI
+console    = "uart-bridge"         # logs come out UART0 (the FTDI), not USB
+download   = "auto"                # this board's FTDI wires RTS->EN, so esptool resets it
+baud       = 115200
+port_glob  = "/dev/cu.usbserial-*"  # the uart-bridge family (shared with the devkit's CP2102)
+bridge     = "FT232R"               # the bridge MODEL (this CAM's programmer) — narrows the shared
+                                    # family to this board. A model, not a serial: any FT232R matches.
+
+[identity]
+# Human name for THIS board. Shown by `detect`/`scan`, and baked into the
+# firmware at flash time as the BLE advertise name + serial banner. Rename =
+# edit this + reflash. Keep it short, alnum+dash (it's a BLE name).
+name = "esp32cam"
+
+[notes]
+text = """
+Classic ESP32 behind an OV3660 cam — esptool chip-probe is the only honest ID
+(the camera says nothing about the silicon). The FTDI here HAS the auto-reset
+circuit (RTS->EN), so flashing needs no IO0 jumper; esptool enters download
+mode on its own.
+Because RTS->EN is wired, `watch` must NOT assert RTS on open or it holds the
+chip in reset (looks like a bootloop) — that's why watch defaults to no-reset;
+use `watch --reset` for a fresh boot banner.
+Power from 5V; a 3.3V feed browns out the cam rail. Console is UART0 = the FTDI.
+GPIO is scarce: camera DVP + SD eat most pins. Strapping pins IO0/IO2/IO12/IO15
+must be avoided for I/O (IO12/MTDI sets flash voltage — wrong level bricks boot).
+A bare-FTDI AI-Thinker CAM (no auto-reset) would instead need manual download:
+jumper IO0->GND, tap RST.
+"""

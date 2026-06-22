@@ -1,0 +1,24 @@
+# ESP32-C3 SuperMini — native-USB board.
+[board]
+chip       = "esp32c3"            # idf set-target + esptool chip
+transport  = "native-usb"         # how the host flashes it
+console     = "native-usb"        # where firmware logs come out
+download   = "auto"               # esptool auto-enters download via USB-JTAG; no jumpers
+baud       = 115200
+port_glob  = "/dev/cu.usbmodem*"  # the native-USB family; resolves uniquely while it's the only
+                                  # native-USB board. A second one → disambiguate with --port.
+
+[identity]
+# Human name for THIS board. Shown by `detect`/`scan`, and baked into the
+# firmware at flash time as the BLE advertise name + serial banner. Rename =
+# edit this + reflash. Keep it short, alnum+dash (it's a BLE name).
+name = "c3_supermini"
+
+[notes]
+# Surfaced to the agent by `esp32loop detect` and the skill.
+text = """
+Native USB-Serial-JTAG on the chip — one USB-C cable is flash + console + reset.
+esptool resets into download mode on its own; no BOOT/RST dance.
+If no cu.usbmodem* appears: power-only cable, or the board isn't plugged into its
+own port. The USB-JTAG lives in ROM, so even a blank/bricked C3 still enumerates.
+"""

@@ -1,0 +1,2 @@
+# C3: console on native USB-Serial-JTAG (read it on cu.usbmodem*).
+CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y

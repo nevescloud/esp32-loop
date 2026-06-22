@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
+
+# Local secrets (WiFi creds, …) — never committed. Copy .env.example -> .env.
+.env
+# Track the template.
+!.env.example
+
+# uv
+uv.lock
+
+# ESP-IDF build output
+build/
+build-*/
+sdkconfig
+sdkconfig.*
+!sdkconfig.defaults
+!sdkconfig.defaults.*
+managed_components/
+dependencies.lock
