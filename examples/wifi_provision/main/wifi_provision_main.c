@@ -5,8 +5,10 @@
 // Creds persist to NVS, so after the first provision it reconnects on reboot
 // without BLE. Builds for any IDF target with WiFi + a BLE radio (esp32, esp32c3).
 //
-//   wifi   char (write):          "<ssid>\n<password>" -> connect + persist
-//   status char (read + notify):  live JSON {"state","ip","rssi","ssid"}
+// The surface is Nordic UART (NUS) — a plain text stream, so it speaks the
+// serial-over-BLE standard, not a coined profile:
+//   NUS RX (...0002, write):          "<ssid>\n<password>" -> connect + persist
+//   NUS TX (...0003, read + notify):  live JSON {"state","ip","rssi","ssid"}
 //
 // SAFETY: creds cross an UNENCRYPTED BLE link (plaintext on air) — fine for a
 // bench/lab network, not a hostile-RF deployment. ESP-IDF's unified provisioning
@@ -42,13 +44,17 @@ static char s_ip[16] = "";
 static char s_ssid[33] = "";
 static int s_retries = 0;
 
-// Custom 128-bit UUIDs (LSB-first): service ...0010, wifi-creds ...0011, status ...0012.
-static const ble_uuid128_t svc_uuid = BLE_UUID128_INIT(
-    0xf0, 0xde, 0xbc, 0x9a, 0x78, 0x56, 0x34, 0x12, 0x00, 0x10, 0x32, 0x70, 0x6f, 0x6f, 0x6c, 0xe5);
-static const ble_uuid128_t wifi_uuid = BLE_UUID128_INIT(
-    0xf0, 0xde, 0xbc, 0x9a, 0x78, 0x56, 0x34, 0x12, 0x00, 0x11, 0x32, 0x70, 0x6f, 0x6f, 0x6c, 0xe5);
-static const ble_uuid128_t status_uuid = BLE_UUID128_INIT(
-    0xf0, 0xde, 0xbc, 0x9a, 0x78, 0x56, 0x34, 0x12, 0x00, 0x12, 0x32, 0x70, 0x6f, 0x6f, 0x6c, 0xe5);
+// Nordic UART Service (6e400001/2/3, LSB-first) — the de-facto serial-over-BLE
+// standard. The provisioning protocol is a plain text stream (write "ssid\npass",
+// notify JSON status), so it IS serial: expose it as NUS rather than a coined UUID,
+// and any NUS client (nRF Connect, a browser UART terminal) provisions it for free.
+// RX (...0002, write) carries the creds; TX (...0003, notify) streams status.
+static const ble_uuid128_t nus_svc_uuid = BLE_UUID128_INIT(
+    0x9e, 0xca, 0xdc, 0x24, 0x0e, 0xe5, 0xa9, 0xe0, 0x93, 0xf3, 0xa3, 0xb5, 0x01, 0x00, 0x40, 0x6e);
+static const ble_uuid128_t nus_rx_uuid = BLE_UUID128_INIT(
+    0x9e, 0xca, 0xdc, 0x24, 0x0e, 0xe5, 0xa9, 0xe0, 0x93, 0xf3, 0xa3, 0xb5, 0x02, 0x00, 0x40, 0x6e);
+static const ble_uuid128_t nus_tx_uuid = BLE_UUID128_INIT(
+    0x9e, 0xca, 0xdc, 0x24, 0x0e, 0xe5, 0xa9, 0xe0, 0x93, 0xf3, 0xa3, 0xb5, 0x03, 0x00, 0x40, 0x6e);
 
 static void status_str(char *buf, size_t n) {
     int rssi = 0;
@@ -151,10 +157,10 @@ static int status_read(uint16_t c, uint16_t a, struct ble_gatt_access_ctxt *ctxt
 static const struct ble_gatt_svc_def gatt_svcs[] = {
     {
         .type = BLE_GATT_SVC_TYPE_PRIMARY,
-        .uuid = &svc_uuid.u,
+        .uuid = &nus_svc_uuid.u,
         .characteristics = (struct ble_gatt_chr_def[]){
-            {.uuid = &wifi_uuid.u, .access_cb = wifi_write, .flags = BLE_GATT_CHR_F_WRITE},
-            {.uuid = &status_uuid.u, .access_cb = status_read,
+            {.uuid = &nus_rx_uuid.u, .access_cb = wifi_write, .flags = BLE_GATT_CHR_F_WRITE},
+            {.uuid = &nus_tx_uuid.u, .access_cb = status_read,
              .flags = BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_NOTIFY, .val_handle = &s_status_handle},
             {0},
         },
@@ -189,12 +195,23 @@ static int gap_event(struct ble_gap_event *event, void *arg) {
 }
 
 static void start_advertising(void) {
+    // 31-byte advert budget can't hold flags + a 128-bit UUID + the name. Keep the
+    // NAME in the primary advert (passively scannable -> robust name discovery for
+    // the CLI) and put the service UUID in the scan response, which an active
+    // scanner (Chrome's Web Bluetooth) aggregates — so a host can filter the chooser
+    // to this service instead of listing every BLE device in range.
     struct ble_hs_adv_fields fields = {0};
     fields.flags = BLE_HS_ADV_F_DISC_GEN | BLE_HS_ADV_F_BREDR_UNSUP;
     fields.name = (uint8_t *)s_name;
     fields.name_len = strlen(s_name);
     fields.name_is_complete = 1;
     ble_gap_adv_set_fields(&fields);
+
+    struct ble_hs_adv_fields rsp = {0};
+    rsp.uuids128 = (ble_uuid128_t *)&nus_svc_uuid;
+    rsp.num_uuids128 = 1;
+    rsp.uuids128_is_complete = 1;
+    ble_gap_adv_rsp_set_fields(&rsp);
 
     struct ble_gap_adv_params adv = {0};
     adv.conn_mode = BLE_GAP_CONN_MODE_UND;   // CONNECTABLE
