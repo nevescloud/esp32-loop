@@ -24,7 +24,7 @@ express specify the next runtime verb; don't add capability ahead of one.
 - The MCP server is the opt-in `[mcp]` extra, run as `uv run --extra mcp esp32loop-mcp`; it wraps the runtime verbs only.
 
 ## Commands
-Verb surface: `detect · flash · watch · scan · gatt · read · sub · send · wifi · new · boards`,
+Verb surface: `detect · flash · watch · scan · status · gatt · read · sub · send · wifi · new · boards`,
 all run as `uv run esp32loop <verb>`. Signatures, flags, and per-verb notes live in the skill
 (`.claude/skills/esp32-loop/SKILL.md`) — the canonical agent reference; don't restate flags
 here, they drift.

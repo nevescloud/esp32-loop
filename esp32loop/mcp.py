@@ -10,7 +10,7 @@ local toolchain and a USB-attached board, which Bash already covers and a remote
 client cannot drive. This is the local backend; the same verb surface is what a
 hosted (Worker + Durable Object) front door re-exposes over WiFi.
 
-  uv run --extra mcp python -m esp32loop.mcp      # stdio
+  uv run --extra mcp esp32loop-mcp      # stdio
 """
 
 from __future__ import annotations
@@ -57,6 +57,18 @@ async def scan(seconds: float = 6, name: str | None = None) -> list[dict]:
     Returns advertised name + address + RSSI, strongest signal first. `name`
     filters to advertised names containing that substring."""
     return await R.scan(seconds, name)
+
+
+@mcp.tool()
+async def status(board: str, timeout: float = 10) -> dict:
+    """Whole-board ground-truth in one call — the after-flash sanity read. Collapses
+    detect + scan + gatt + read into one structured result: USB presence (port, chip),
+    BLE advertising (rssi, address), the live GATT surface with `drives`, and a
+    telemetry snapshot. Each layer degrades to null independently, so an absent or
+    half-up board is reported, never an error. Prefer this over four separate calls
+    when you just need to know the board's current state. `board` is a name from
+    `boards`."""
+    return await R.status(board, _label(board), timeout)
 
 
 @mcp.tool()

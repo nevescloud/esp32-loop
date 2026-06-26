@@ -35,6 +35,12 @@ ships 3.9). From another repo, `uv run --project /path/to/esp32-loop esp32loop �
   lists advertised name / address / RSSI, strongest first. The in-tool answer to "is my
   firmware actually advertising?" — the question `detect`/`watch` can't reach. Filter
   with `--name esp32` so the room's other beacons don't bury yours.
+- `status <board>` — whole-board ground-truth in **one** call: plugged in? (port, chip)
+  · advertising? (rssi) · drivable? (GATT `drives`) · current telemetry. Collapses
+  `detect`+`scan`+`gatt`+`read` — the after-flash sanity read. Each layer degrades to
+  null independently, so a half-up board (on USB but not advertising, or advertising but
+  unconnectable) is *reported*, never raised. Reach for this first when you just need to
+  know where a board stands; drop to the single verbs to act.
 - `gatt <board>` — connect and list the device's services + characteristics. Introspect
   what a board exposes before reading or driving it.
 - `read <board> [--char UUID]` — connect and read a characteristic (default: the first

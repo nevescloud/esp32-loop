@@ -26,6 +26,7 @@ esp32loop flash <board>                 # build + upload (scaffold, example, any
 
 esp32loop watch <board>                 # capture serial as text — not an interactive monitor
 esp32loop scan                          # BLE scan — what's advertising?
+esp32loop status <board>                # one-call ground-truth: plugged in? advertising? drivable? telemetry
 esp32loop gatt  <board>                 # connect: list services + characteristics
 esp32loop read  <board>                 # connect: read a characteristic (telemetry)
 esp32loop sub   <board>                 # connect: stream notifications (live state)
@@ -88,8 +89,8 @@ the whole loop — scaffold, flash, observe, control — and the per-board traps
 grounds its claims in `detect`/`watch`/`scan` output instead of guessing. The aim is an
 agent that can take an ESP32 and prototype on it end to end, on its own.
 
-For non-Bash clients, the runtime verbs (`scan`/`gatt`/`read`/`sub`/`send`/`wifi`) are
-also exposed as an MCP server: `uv run --extra mcp esp32loop-mcp`.
+For non-Bash clients, the runtime verbs (`scan`/`status`/`gatt`/`read`/`sub`/`send`/`wifi`)
+are also exposed as an MCP server: `uv run --extra mcp esp32loop-mcp`.
 
 ## License
 

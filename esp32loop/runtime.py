@@ -146,30 +146,66 @@ async def scan(seconds: float = 6, name: str | None = None) -> list[dict]:
     return rows
 
 
+def _introspect(client) -> list[dict]:
+    """Services + characteristics of a connected device, each char annotated with
+    `drives`: the verbs that would bind to it under the same first-by-property rule
+    `_pick` uses (`send`/`wifi` → first writable, `sub` → first notify, `read` →
+    first readable). The contract made visible — shared by `gatt` and `status`."""
+    PICK = [("write", ["send", "wifi"]), ("notify", ["sub"]), ("read", ["read"])]
+    claimed: set[str] = set()  # each property's first holder wins, matching _pick
+    services = []
+    for s in client.services:
+        chars = []
+        for ch in s.characteristics:
+            drives = [v for prop, verbs in PICK
+                      if prop in ch.properties and prop not in claimed for v in verbs]
+            claimed.update(prop for prop, _ in PICK
+                           if prop in ch.properties and prop not in claimed)
+            chars.append({"uuid": str(ch.uuid),
+                          "properties": sorted(ch.properties), "drives": drives})
+        services.append({"uuid": str(s.uuid), "characteristics": chars})
+    return services
+
+
 async def gatt(label: str, timeout: float = 10) -> dict:
     """Connect and introspect services + characteristics of a live device. Each
-    char carries `drives`: the verbs that would bind to it — the same first-by-property
-    rule `_pick` uses (`send`/`wifi` → first writable, `sub` → first notify, `read` →
-    first readable). This is the contract made visible: it shows whether a firmware is
-    drivable and how, so no separate protocol spec has to describe it."""
-    PICK = [("write", ["send", "wifi"]), ("notify", ["sub"]), ("read", ["read"])]
-
+    char carries `drives` (see `_introspect`) — whether a firmware is drivable and
+    how, so no separate protocol spec has to describe it."""
     async def show(c, dev):
-        claimed: set[str] = set()  # each property's first holder wins, matching _pick
-        services = []
-        for s in c.services:
-            chars = []
-            for ch in s.characteristics:
-                drives = [v for prop, verbs in PICK
-                          if prop in ch.properties and prop not in claimed
-                          for v in verbs]
-                claimed.update(prop for prop, _ in PICK
-                               if prop in ch.properties and prop not in claimed)
-                chars.append({"uuid": str(ch.uuid),
-                              "properties": sorted(ch.properties), "drives": drives})
-            services.append({"uuid": str(s.uuid), "characteristics": chars})
-        return {"address": dev.address, "services": services}
+        return {"address": dev.address, "services": _introspect(c)}
     return await _with_client(label, timeout, show)
+
+
+async def status(board: str, label: str, timeout: float = 10) -> dict:
+    """One-call board ground-truth, collapsing the detect→scan→gatt→read confirm
+    dance into a single structured read — the observability primitive the loop leans
+    on after every flash. Layers, each degrading independently to None/absent so the
+    call never raises: USB presence (`detect`) + BLE advertising (`scan`) + live GATT
+    surface and a telemetry snapshot (one connection). `gatt`/`telemetry` stay None
+    when the board isn't advertising or drops before connect — absence is the answer,
+    not an error."""
+    row = next((r for r in detect() if r["board"] == board), None)
+    usb = row and {"port": row["port"], "transport": row["transport"],
+                   "bridge": row["bridge"], "serial": row["serial"],
+                   "chip": row["_match"]["chip"] if row["_match"] else None}
+    adv = next((h for h in await scan(timeout, label) if h["name"] == label), None)
+    out = {"board": board, "label": label, "usb": usb or None,
+           "ble": {"advertising": adv is not None,
+                   "rssi": adv["rssi"] if adv else None,
+                   "address": adv["address"] if adv else None},
+           "gatt": None, "telemetry": None}
+    if adv is None:
+        return out
+
+    async def probe(c, dev):
+        ch = _pick(c, None, "read")
+        telem = decode(await c.read_gatt_char(ch)) if ch is not None else None
+        return _introspect(c), telem
+    try:
+        out["gatt"], out["telemetry"] = await _with_client(label, timeout, probe)
+    except BoardNotFound:
+        pass  # advertised a moment ago but dropped before connect — leave ble as-is
+    return out
 
 
 async def read(label: str, char: str | None = None, timeout: float = 10) -> str:

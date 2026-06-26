@@ -118,6 +118,28 @@ def cmd_scan(args) -> int:
     return 0
 
 
+def cmd_status(args) -> int:
+    """Whole-board ground-truth in one call: plugged in? advertising? drivable?
+    current telemetry. Collapses detect→scan→gatt→read — the after-flash sanity read.
+    Never errors on an absent board; absence is reported, not raised."""
+    import asyncio
+    label = B.load_board(args.board)["label"]
+    st = asyncio.run(R.status(args.board, label, args.timeout))
+    print(f"{args.board}  \"{label}\"")
+    u = st["usb"]
+    print(f"  usb:    " + (f"{u['port']}  ({u['chip'] or '?'}, {u['bridge'] or u['transport']})"
+                           if u else "not plugged in"))
+    ble = st["ble"]
+    print(f"  ble:    " + (f"advertising  rssi {ble['rssi']}  [{ble['address']}]"
+                           if ble["advertising"] else "not advertising"))
+    if st["gatt"] is not None:
+        drives = sorted({d for s in st["gatt"] for ch in s["characteristics"] for d in ch["drives"]})
+        print(f"  gatt:   {len(st['gatt'])} svcs · drives {' '.join(drives) or '—'}")
+    if st["telemetry"] is not None:
+        print(f"  telem:  {st['telemetry']}")
+    return 0
+
+
 def _run_ble(board: str, coro_factory, render) -> int:
     """Resolve the board's advertise name, run a runtime BLE coro against it, and
     either render the result or map runtime's exceptions to the CLI's messages +
@@ -328,6 +350,11 @@ def main() -> None:
     sc.add_argument("--seconds", type=float, default=6, help="scan window (default 6)")
     sc.add_argument("--name", help="only show advertised names containing this substring")
     sc.set_defaults(fn=cmd_scan)
+
+    st = sub.add_parser("status", help="whole-board ground-truth: plugged in? advertising? drivable? telemetry")
+    st.add_argument("board")
+    st.add_argument("--timeout", type=float, default=10, help="BLE scan/connect timeout (default 10)")
+    st.set_defaults(fn=cmd_status)
 
     sd = sub.add_parser("send", help="connect over BLE and set a pin — drives ble_control")
     sd.add_argument("board")
