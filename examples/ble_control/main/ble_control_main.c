@@ -274,20 +274,21 @@ static int gap_event(struct ble_gap_event *event, void *arg) {
 }
 
 static void start_advertising(void) {
-    // 31-byte advert budget can't hold flags + a 128-bit UUID + a 15-char name.
-    // Advertise the NUS UUID (what a service-filter chooser scans for); put the
-    // name in the scan response, which Chrome aggregates when matching filters.
+    // 31-byte advert budget can't hold flags + a 128-bit UUID + the name. Keep
+    // the NAME in the primary advert (passively scannable -> robust name-based
+    // discovery for the CLI) and put the NUS UUID in the scan response, which an
+    // active scanner (Chrome's Web Bluetooth) aggregates when matching filters.
     struct ble_hs_adv_fields fields = {0};
     fields.flags = BLE_HS_ADV_F_DISC_GEN | BLE_HS_ADV_F_BREDR_UNSUP;
-    fields.uuids128 = (ble_uuid128_t *)&nus_svc_uuid;
-    fields.num_uuids128 = 1;
-    fields.uuids128_is_complete = 1;
+    fields.name = (uint8_t *)s_name;
+    fields.name_len = strlen(s_name);
+    fields.name_is_complete = 1;
     ble_gap_adv_set_fields(&fields);
 
     struct ble_hs_adv_fields rsp = {0};
-    rsp.name = (uint8_t *)s_name;
-    rsp.name_len = strlen(s_name);
-    rsp.name_is_complete = 1;
+    rsp.uuids128 = (ble_uuid128_t *)&nus_svc_uuid;
+    rsp.num_uuids128 = 1;
+    rsp.uuids128_is_complete = 1;
     ble_gap_adv_rsp_set_fields(&rsp);
 
     struct ble_gap_adv_params adv = {0};
