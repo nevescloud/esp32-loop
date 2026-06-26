@@ -9,8 +9,9 @@
 //   status char (read + notify):  live JSON {"state","ip","rssi","ssid"}
 //
 // SAFETY: creds cross an UNENCRYPTED BLE link (plaintext on air) — fine for a
-// bench/lab network, not a hostile-RF deployment. ESP-IDF's wifi_provisioning
-// component adds session encryption (SRP / proof-of-possession) if you need it.
+// bench/lab network, not a hostile-RF deployment. ESP-IDF's unified provisioning
+// component (network_provisioning, formerly wifi_provisioning before IDF v6.0)
+// adds session encryption (SRP6a / proof-of-possession) if you need it.
 #include <stdio.h>
 #include <string.h>
 
