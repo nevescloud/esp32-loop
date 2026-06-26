@@ -9,9 +9,6 @@ __pycache__/
 # Track the template.
 !.env.example
 
-# uv
-uv.lock
-
 # ESP-IDF build output
 build/
 build-*/

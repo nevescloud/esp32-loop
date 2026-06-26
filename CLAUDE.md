@@ -4,18 +4,30 @@ A host-side CLI (plus an optional MCP server) that flashes firmware to an ESP32 
 observes/controls it over USB and BLE. The CLI is the substrate; `.claude/skills/esp32-loop/`
 is the Claude-specific adapter.
 
+## How the agent drives a board (design axis)
+The universal "any action" primitive is the **write→flash→observe loop** — an agent
+authoring firmware and flashing it *is* arbitrary on-device capability, just slow
+(~25 s/cycle) and state-resetting. The runtime verbs (`send`/`wifi`/`sub`/…) are a
+**fast, stateful cache** over that loop, not the source of power: a verb earns its place
+only when an action is frequent enough that reflashing is too slow, or stateful enough that
+a reflash would wipe what must stay held. Otherwise the action is just firmware to flash.
+
+So capability is already unbounded; the scarce resources are **loop latency,
+observability, and self-description**. Invest there — faster flash/reset, structured board
+state, clean panic/boot-reason surfacing, `gatt`-style self-describing surfaces — not in an
+on-device REPL/eval or a speculatively growing verb set. Let a real task the loop *can't*
+express specify the next runtime verb; don't add capability ahead of one.
+
 ## Environment
 - Python ≥ 3.11 — macOS ships 3.9 and `tomllib` needs 3.11. `uv` manages the env.
 - Run the CLI as `uv run esp32loop <verb>`. From another repo: `uv run --project /path/to/esp32-loop esp32loop …`.
-- The MCP server is the opt-in `[mcp]` extra (`pip install -e '.[mcp]'`); it wraps the runtime verbs only.
+- The MCP server is the opt-in `[mcp]` extra, run as `uv run --extra mcp esp32loop-mcp`; it wraps the runtime verbs only.
 
 ## Commands
-- `uv run esp32loop detect [--probe]` — USB ports + matched board + transport; `--probe` confirms silicon vs the declared chip.
-- `uv run esp32loop flash <board> [--project DIR] [--watch]` — build + upload (default project: `examples/ble_control`); `--watch` captures serial after.
-- `uv run esp32loop watch <board> [--until REGEX] [--reset]` — capture serial to stdout; defaults to NOT resetting the board.
-- `uv run esp32loop scan | gatt | read | sub | send | wifi <board>` — BLE: advertise check · introspect · read · stream notifications · set a GPIO · provision WiFi.
-- `uv run esp32loop new <name> [--template ble_control|wifi_provision]` — scaffold a flashable firmware from a bundled example.
-- `uv run esp32loop boards` — list known boards and their quirks.
+Verb surface: `detect · flash · watch · scan · gatt · read · sub · send · wifi · new · boards`,
+all run as `uv run esp32loop <verb>`. Signatures, flags, and per-verb notes live in the skill
+(`.claude/skills/esp32-loop/SKILL.md`) — the canonical agent reference; don't restate flags
+here, they drift.
 
 ## Architecture
 - `esp32loop/runtime.py` — verb logic, print-free, returns data; the single source both front-ends share.

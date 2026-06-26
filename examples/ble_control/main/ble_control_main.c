@@ -1,10 +1,14 @@
-// Connectable device: control + telemetry over one BLE GATT service. The
+// Connectable device: control + telemetry, drivable two ways over BLE. The
 // differentiated shape — an agent connects, *reads/subscribes* to a running
 // board's live state AND *commands* it (host-side eyes and hands), vs a beacon
 // that only shouts a name. Builds for any IDF target with a BLE radio.
 //
-//   command   char (write):        2 bytes [gpio, level] -> set a pin
-//   telemetry char (read + notify): live JSON {"up":s,"heap":b,"pin":n,"lvl":v}
+// Two GATT services in one box (see the NUS note below for why both):
+//   custom service — structured chars for programmatic drive (the esp32loop CLI):
+//     command   char (write):        2 bytes [gpio, level] -> set a pin
+//     telemetry char (read + notify): live JSON {"up":s,"heap":b,"pin":n,"lvl":v}
+//   Nordic UART Service — a typed line shell for any generic terminal:
+//     help · gpio <pin> [0|1] · blink <pin> [n] · stat · name
 //
 // SAFETY: the command is a persistent set — fine for LEDs/relays, NOT motors
 // (a dropped link latches the pin); motors want pulse + watchdog instead.

@@ -89,7 +89,7 @@ grounds its claims in `detect`/`watch`/`scan` output instead of guessing. The ai
 agent that can take an ESP32 and prototype on it end to end, on its own.
 
 For non-Bash clients, the runtime verbs (`scan`/`gatt`/`read`/`sub`/`send`/`wifi`) are
-also exposed as an MCP server: `uv run --extra mcp python -m esp32loop.mcp`.
+also exposed as an MCP server: `uv run --extra mcp esp32loop-mcp`.
 
 ## License
 
