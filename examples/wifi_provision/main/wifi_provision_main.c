@@ -61,7 +61,10 @@ static void status_str(char *buf, size_t n) {
     wifi_ap_record_t ap;
     if (strcmp(s_state, "connected") == 0 && esp_wifi_sta_get_ap_info(&ap) == ESP_OK)
         rssi = ap.rssi;
-    snprintf(buf, n, "{\"state\":\"%s\",\"ip\":\"%s\",\"rssi\":%d,\"ssid\":\"%s\"}",
+    // Newline-delimited JSON (NDJSON): each record ends in CRLF, so the emitter
+    // owns its line discipline — a stream terminal (xterm) renders one line per
+    // notification, and the device, not the transport, frames the records.
+    snprintf(buf, n, "{\"state\":\"%s\",\"ip\":\"%s\",\"rssi\":%d,\"ssid\":\"%s\"}\r\n",
              s_state, s_ip, rssi, s_ssid);
 }
 

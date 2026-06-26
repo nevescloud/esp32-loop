@@ -92,10 +92,12 @@ def detect() -> list[dict]:
 # ── BLE: scan, then connect and run a verb ────────────────────────────────────
 
 def decode(data) -> str:
-    """Telemetry is JSON/text; fall back to hex for binary."""
+    """Telemetry is JSON/text; fall back to hex for binary. Whitespace (newlines,
+    tabs) counts as text — a record terminated with CRLF is still text, not binary,
+    so `isprintable()` alone (which rejects all control chars) is too strict."""
     try:
         s = bytes(data).decode("utf-8")
-        if s.isprintable():
+        if all(c.isprintable() or c in "\r\n\t" for c in s):
             return s
     except UnicodeDecodeError:
         pass

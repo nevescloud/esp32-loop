@@ -136,7 +136,7 @@ def cmd_status(args) -> int:
         drives = sorted({d for s in st["gatt"] for ch in s["characteristics"] for d in ch["drives"]})
         print(f"  gatt:   {len(st['gatt'])} svcs · drives {' '.join(drives) or '—'}")
     if st["telemetry"] is not None:
-        print(f"  telem:  {st['telemetry']}")
+        print(f"  telem:  {st['telemetry'].rstrip()}")
     return 0
 
 
